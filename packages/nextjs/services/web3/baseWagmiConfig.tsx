@@ -3,7 +3,7 @@ import { Chain, createClient, fallback, http } from "viem";
 import { hardhat, mainnet } from "viem/chains";
 import { createConfig } from "wagmi";
 import scaffoldConfig from "~~/scaffold.config";
-import { getAlchemyHttpUrl, getTargetNetworks } from "~~/utils/scaffold-eth";
+import { getTargetNetworks } from "~~/utils/scaffold-eth";
 
 const targetNetworks = getTargetNetworks();
 
@@ -13,8 +13,10 @@ export const enabledChains = targetNetworks.find((network: Chain) => network.id 
   : ([...targetNetworks, mainnet] as const);
 
 export const createWagmiClient = ({ chain }: { chain: Chain }) => {
-  const alchemyHttpUrl = getAlchemyHttpUrl(chain.id);
-  const rpcFallbacks = alchemyHttpUrl ? [http(alchemyHttpUrl), http()] : [http()];
+  // Use viem's default RPC URLs (chain.rpcUrls.default.http)
+  // Create fallback transport with default RPC URLs
+  const defaultRpcUrls = chain.rpcUrls?.default?.http || [];
+  const rpcFallbacks = defaultRpcUrls.length > 0 ? defaultRpcUrls.map(url => http(url)) : [http()];
 
   return createClient({
     chain: {

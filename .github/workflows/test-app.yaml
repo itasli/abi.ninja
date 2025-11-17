@@ -19,7 +19,6 @@ jobs:
         run: |
           touch packages/nextjs/.env.local
           echo NEXT_PUBLIC_HEIMDALL_URL=${{ secrets.NEXT_PUBLIC_HEIMDALL_URL }} >> packages/nextjs/.env.local
-          echo NEXT_PUBLIC_ETHERSCAN_V2_API_KEY=${{ secrets.NEXT_PUBLIC_ETHERSCAN_V2_API_KEY }} >> packages/nextjs/.env.local
 
       - name: Cypress run
         uses: cypress-io/github-action@v6

@@ -1,17 +1,28 @@
 import { isZeroAddress } from "./scaffold-eth/common";
 import { Abi, Address, Chain, isAddress, toFunctionSelector } from "viem";
 
-export const fetchContractABIFromSourcify = async (contractAddress: Address, chainId: number) => {
+type SourcifyContractData = {
+  abi: Abi;
+  implementation: Address | null;
+  deployment?: {
+    blockNumber: string;
+    txHash: string;
+  };
+};
+
+export const fetchContractDataFromSourcify = async (
+  contractAddress: Address,
+  chainId: number,
+): Promise<SourcifyContractData> => {
   try {
     // Sourcify API endpoint for fetching contract metadata
-    // First try with fields parameter to get ABI directly
-    let sourcifyUrl = `https://sourcify.dev/server/v2/contract/${chainId}/${contractAddress}?fields=abi`;
-    let response = await fetch(sourcifyUrl);
+    // Fetch both ABI and deployment info in a single request
+    const sourcifyUrl = `https://sourcify.dev/server/v2/contract/${chainId}/${contractAddress}?fields=abi,deployment,proxyResolution`;
+    const response = await fetch(sourcifyUrl);
 
-    // If that doesn't work, try without fields parameter to get full metadata
-    if (!response.ok || response.status === 404) {
-      sourcifyUrl = `https://sourcify.dev/server/v2/contract/${chainId}/${contractAddress}`;
-      response = await fetch(sourcifyUrl);
+    // 404 means contract is not verified, throw error immediately (like Etherscan)
+    if (response.status === 404) {
+      throw new Error("Contract not verified on Sourcify");
     }
 
     if (!response.ok) {
@@ -22,19 +33,16 @@ export const fetchContractABIFromSourcify = async (contractAddress: Address, cha
 
     // Check if contract is verified
     // API v2 returns: match/creationMatch/runtimeMatch can be "match", "exact_match", or null
-    // For backward compatibility, also check old format: status can be "perfect" or "partial"
     const isVerified =
       data.match === "match" ||
       data.match === "exact_match" ||
       data.creationMatch === "match" ||
       data.creationMatch === "exact_match" ||
       data.runtimeMatch === "match" ||
-      data.runtimeMatch === "exact_match" ||
-      data.status === "perfect" ||
-      data.status === "partial";
+      data.runtimeMatch === "exact_match";
 
     if (!data || !isVerified) {
-      const statusInfo = data?.match || data?.creationMatch || data?.runtimeMatch || data?.status || "missing";
+      const statusInfo = data?.match || data?.creationMatch || data?.runtimeMatch || "missing";
       throw new Error(`Contract not verified on Sourcify (status: ${statusInfo})`);
     }
 
@@ -94,14 +102,78 @@ export const fetchContractABIFromSourcify = async (contractAddress: Address, cha
       throw new Error("No ABI found in Sourcify response");
     }
 
+    // Extract deployment info if available
+    let deployment: { blockNumber: string; txHash: string } | undefined;
+    if (data.deployment && data.deployment.transactionHash && data.deployment.blockNumber) {
+      deployment = {
+        blockNumber: data.deployment.blockNumber,
+        txHash: data.deployment.transactionHash,
+      };
+    }
+
     return {
       abi,
       implementation,
+      deployment,
     };
   } catch (error) {
-    console.error("Error fetching ABI from Sourcify:", error);
+    console.error("Error fetching contract data from Sourcify:", error);
     throw error;
   }
+};
+
+// Wrapper function for backward compatibility - fetches only ABI
+// Follows similar pattern to Etherscan: if implementation is found, fetch its ABI separately
+export const fetchContractABIFromSourcify = async (
+  contractAddress: Address,
+  chainId: number,
+): Promise<{ abi: Abi; implementation: Address | null }> => {
+  // First call to get contract data and check for implementation
+  const contractData = await fetchContractDataFromSourcify(contractAddress, chainId);
+  const implementation = contractData.implementation;
+
+  // If there's an implementation address, make a second call to get its ABI
+  if (implementation && !isZeroAddress(implementation)) {
+    try {
+      const implementationData = await fetchContractDataFromSourcify(implementation, chainId);
+
+      if (implementationData.abi && Array.isArray(implementationData.abi) && implementationData.abi.length > 0) {
+        return {
+          abi: implementationData.abi,
+          implementation,
+        };
+      } else {
+        console.error("Error fetching ABI for implementation from Sourcify: No ABI found");
+        // Fall through to return original contract ABI
+      }
+    } catch (error) {
+      console.error("Error fetching ABI for implementation from Sourcify:", error);
+      // Fall through to return original contract ABI
+    }
+  }
+
+  // If no implementation or failed to get implementation ABI, return original contract ABI
+  return {
+    abi: contractData.abi,
+    implementation,
+  };
+};
+
+// Wrapper function for fetching only deployment info
+export const fetchContractCreationInfoFromSourcify = async (
+  contractAddress: Address,
+  chainId: number,
+): Promise<{ blockNumber: string; txHash: string }> => {
+  const data = await fetchContractDataFromSourcify(contractAddress, chainId);
+
+  if (!data.deployment) {
+    throw new Error("Contract deployment info not available on Sourcify");
+  }
+
+  return {
+    blockNumber: data.deployment.blockNumber,
+    txHash: data.deployment.txHash,
+  };
 };
 
 export const fetchFunctionSignatureFrom4Bytes = async (
@@ -368,47 +440,6 @@ export const enhanceAbiWith4Bytes = async (abi: Abi): Promise<Abi> => {
   }
 
   return enhancedAbi;
-};
-
-export const fetchContractABIFromEtherscan = async (verifiedContractAddress: Address, chainId: number) => {
-  const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_V2_API_KEY;
-
-  // First call to get source code and check for implementation
-  const sourceCodeUrl = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getsourcecode&address=${verifiedContractAddress}&apikey=${apiKey}`;
-
-  const sourceCodeResponse = await fetch(sourceCodeUrl);
-  const sourceCodeData = await sourceCodeResponse.json();
-
-  if (sourceCodeData.status !== "1" || !sourceCodeData.result || sourceCodeData.result.length === 0) {
-    console.error("Error fetching source code from Etherscan:", sourceCodeData);
-    throw new Error("Failed to fetch source code from Etherscan");
-  }
-
-  const contractData = sourceCodeData.result[0];
-  const implementation = contractData.Implementation || null;
-
-  // If there's an implementation address, make a second call to get its ABI
-  if (implementation && !isZeroAddress(implementation)) {
-    const abiUrl = `https://api.etherscan.io/v2/api?chainid=${chainId}&module=contract&action=getabi&address=${implementation}&apikey=${apiKey}`;
-    const abiResponse = await fetch(abiUrl);
-    const abiData = await abiResponse.json();
-
-    if (abiData.status === "1" && abiData.result) {
-      return {
-        abi: JSON.parse(abiData.result),
-        implementation,
-      };
-    } else {
-      console.error("Error fetching ABI for implementation from Etherscan:", abiData);
-      throw new Error("Failed to fetch ABI for implementation from Etherscan");
-    }
-  }
-
-  // If no implementation or failed to get implementation ABI, return original contract ABI
-  return {
-    abi: JSON.parse(contractData.ABI),
-    implementation,
-  };
 };
 
 export function parseAndCorrectJSON(input: string): any {
