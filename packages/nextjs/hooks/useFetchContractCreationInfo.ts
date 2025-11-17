@@ -10,15 +10,20 @@ type ContractCreationInfo = {
 type UseFetchContractCreationInfoParams = {
   contractAddress: Address;
   chainId: number;
+  enabled?: boolean;
 };
 
-const useFetchContractCreationInfo = ({ contractAddress, chainId }: UseFetchContractCreationInfoParams) => {
+const useFetchContractCreationInfo = ({
+  contractAddress,
+  chainId,
+  enabled = true,
+}: UseFetchContractCreationInfoParams) => {
   const { data, error, isLoading } = useQuery({
     queryKey: ["contractCreationInfo", { contractAddress, chainId }],
     queryFn: async (): Promise<ContractCreationInfo> => {
       return await fetchContractCreationInfoFromSourcify(contractAddress, chainId);
     },
-    enabled: Boolean(contractAddress) && chainId !== 31337,
+    enabled: enabled && Boolean(contractAddress) && chainId !== 31337,
     retry: false,
   });
 

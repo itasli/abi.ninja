@@ -154,7 +154,11 @@ const ContractDetailPage = ({ addressFromUrl, chainIdFromUrl }: ServerSideProps)
               <span className="loading loading-spinner text-primary h-14 w-14"></span>
             </div>
           ) : effectiveContractData && effectiveContractData?.abi?.length > 0 ? (
-            <ContractUI key={contractAddress} initialContractData={effectiveContractData} />
+            <ContractUI
+              key={contractAddress}
+              initialContractData={effectiveContractData}
+              isVerified={!!fetchedContractData}
+            />
           ) : (
             <div className="bg-base-200 flex flex-col border shadow-xl rounded-2xl px-6 lg:px-8 m-4 overflow-auto">
               <div className="flex items-center">

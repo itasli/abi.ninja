@@ -17,6 +17,7 @@ import { getBlockExplorerTxLink, getTargetNetworks } from "~~/utils/scaffold-eth
 type ContractUIProps = {
   className?: string;
   initialContractData: { address: AddressType; abi: Abi };
+  isVerified?: boolean;
 };
 
 export interface AugmentedAbiFunction extends AbiFunction {
@@ -61,7 +62,7 @@ const mainNetworks = getTargetNetworks();
 /**
  * UI component to interface with deployed contracts.
  **/
-export const ContractUI = ({ className = "", initialContractData }: ContractUIProps) => {
+export const ContractUI = ({ className = "", initialContractData, isVerified = false }: ContractUIProps) => {
   const [refreshDisplayVariables, triggerRefreshDisplayVariables] = useReducer(value => !value, false);
   const { implementationAddress, chainId } = useGlobalState(state => ({
     chainId: state.targetNetwork.id,
@@ -75,6 +76,7 @@ export const ContractUI = ({ className = "", initialContractData }: ContractUIPr
   const { contractCreationInfo, isLoading: isContractCreationLoading } = useFetchContractCreationInfo({
     contractAddress: initialContractData.address,
     chainId,
+    enabled: isVerified,
   });
 
   const updateUrlWithSelectedMethods = (selectedMethods: string[]) => {
