@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Address, isAddress } from "viem";
-import { fetchContractABIFromSourcify } from "~~/utils/abi";
+import { fetchContractDataFromSourcify } from "~~/utils/abi";
 
 type FetchContractAbiParams = {
   contractAddress: string;
@@ -19,8 +19,8 @@ const useFetchContractAbi = ({ contractAddress, chainId, disabled = false }: Fet
 
     const addressToUse: Address = contractAddress;
 
-    // Fetch ABI from Sourcify
-    const { abi, implementation } = await fetchContractABIFromSourcify(addressToUse, chainId);
+    // Fetch contract data from Sourcify (handles proxy contracts and includes deployment info)
+    const { abi, implementation, deployment } = await fetchContractDataFromSourcify(addressToUse, chainId);
 
     if (!abi) throw new Error("Got empty or undefined ABI from Sourcify");
 
@@ -28,7 +28,7 @@ const useFetchContractAbi = ({ contractAddress, chainId, disabled = false }: Fet
       setImplementationAddress(implementation);
     }
 
-    return { abi, address: addressToUse };
+    return { abi, address: addressToUse, deployment };
   };
 
   const { data, error, isLoading } = useQuery({
@@ -43,6 +43,7 @@ const useFetchContractAbi = ({ contractAddress, chainId, disabled = false }: Fet
     error,
     isLoading,
     implementationAddress,
+    deploymentInfo: data?.deployment,
   };
 };
 

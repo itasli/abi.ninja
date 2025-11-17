@@ -111,6 +111,28 @@ export const fetchContractDataFromSourcify = async (
       };
     }
 
+    // If there's an implementation address (proxy), fetch its ABI instead
+    if (implementation && !isZeroAddress(implementation)) {
+      try {
+        const implementationData = await fetchContractDataFromSourcify(implementation, chainId);
+
+        if (implementationData.abi && Array.isArray(implementationData.abi) && implementationData.abi.length > 0) {
+          // Return implementation ABI, but keep deployment info from original contract
+          return {
+            abi: implementationData.abi,
+            implementation,
+            deployment,
+          };
+        } else {
+          console.error("Error fetching ABI for implementation from Sourcify: No ABI found");
+          // Fall through to return original contract ABI
+        }
+      } catch (error) {
+        console.error("Error fetching ABI for implementation from Sourcify:", error);
+        // Fall through to return original contract ABI
+      }
+    }
+
     return {
       abi,
       implementation,
@@ -120,43 +142,6 @@ export const fetchContractDataFromSourcify = async (
     console.error("Error fetching contract data from Sourcify:", error);
     throw error;
   }
-};
-
-// Wrapper function for backward compatibility - fetches only ABI
-// Follows similar pattern to Etherscan: if implementation is found, fetch its ABI separately
-export const fetchContractABIFromSourcify = async (
-  contractAddress: Address,
-  chainId: number,
-): Promise<{ abi: Abi; implementation: Address | null }> => {
-  // First call to get contract data and check for implementation
-  const contractData = await fetchContractDataFromSourcify(contractAddress, chainId);
-  const implementation = contractData.implementation;
-
-  // If there's an implementation address, make a second call to get its ABI
-  if (implementation && !isZeroAddress(implementation)) {
-    try {
-      const implementationData = await fetchContractDataFromSourcify(implementation, chainId);
-
-      if (implementationData.abi && Array.isArray(implementationData.abi) && implementationData.abi.length > 0) {
-        return {
-          abi: implementationData.abi,
-          implementation,
-        };
-      } else {
-        console.error("Error fetching ABI for implementation from Sourcify: No ABI found");
-        // Fall through to return original contract ABI
-      }
-    } catch (error) {
-      console.error("Error fetching ABI for implementation from Sourcify:", error);
-      // Fall through to return original contract ABI
-    }
-  }
-
-  // If no implementation or failed to get implementation ABI, return original contract ABI
-  return {
-    abi: contractData.abi,
-    implementation,
-  };
 };
 
 // Wrapper function for fetching only deployment info

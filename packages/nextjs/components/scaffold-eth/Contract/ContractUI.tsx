@@ -10,7 +10,6 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { MiniFooter } from "~~/components/MiniFooter";
 import { Address, Balance, MethodSelector } from "~~/components/scaffold-eth";
 import { useNetworkColor } from "~~/hooks/scaffold-eth";
-import useFetchContractCreationInfo from "~~/hooks/useFetchContractCreationInfo";
 import { useGlobalState } from "~~/services/store/store";
 import { getBlockExplorerTxLink, getTargetNetworks } from "~~/utils/scaffold-eth";
 
@@ -18,6 +17,7 @@ type ContractUIProps = {
   className?: string;
   initialContractData: { address: AddressType; abi: Abi };
   isVerified?: boolean;
+  deploymentInfo?: { blockNumber: string; txHash: string };
 };
 
 export interface AugmentedAbiFunction extends AbiFunction {
@@ -62,7 +62,7 @@ const mainNetworks = getTargetNetworks();
 /**
  * UI component to interface with deployed contracts.
  **/
-export const ContractUI = ({ className = "", initialContractData, isVerified = false }: ContractUIProps) => {
+export const ContractUI = ({ className = "", initialContractData, deploymentInfo }: ContractUIProps) => {
   const [refreshDisplayVariables, triggerRefreshDisplayVariables] = useReducer(value => !value, false);
   const { implementationAddress, chainId } = useGlobalState(state => ({
     chainId: state.targetNetwork.id,
@@ -72,12 +72,6 @@ export const ContractUI = ({ className = "", initialContractData, isVerified = f
   const networkColor = useNetworkColor(mainNetwork);
   const router = useRouter();
   const { network } = router.query as { network?: string };
-
-  const { contractCreationInfo, isLoading: isContractCreationLoading } = useFetchContractCreationInfo({
-    contractAddress: initialContractData.address,
-    chainId,
-    enabled: isVerified,
-  });
 
   const updateUrlWithSelectedMethods = (selectedMethods: string[]) => {
     const currentQuery = new URLSearchParams(window.location.search);
@@ -229,26 +223,18 @@ export const ContractUI = ({ className = "", initialContractData, isVerified = f
                     </span>
                   </p>
                 )}
-                {!isContractCreationLoading && contractCreationInfo && (
+                {deploymentInfo && (
                   <div className="my-0 text-sm flex items-center gap-2">
                     <span className="font-bold">Created at:</span>
-                    {isContractCreationLoading ? (
-                      <span className="loading loading-spinner loading-xs"></span>
-                    ) : (
-                      contractCreationInfo && (
-                        <>
-                          <span>Block {contractCreationInfo.blockNumber}</span>
-                          <a
-                            href={getBlockExplorerTxLink(chainId, contractCreationInfo.txHash)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="link no-underline"
-                          >
-                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                          </a>
-                        </>
-                      )
-                    )}
+                    <span>Block {deploymentInfo.blockNumber}</span>
+                    <a
+                      href={getBlockExplorerTxLink(chainId, deploymentInfo.txHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link no-underline"
+                    >
+                      <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                    </a>
                   </div>
                 )}
               </div>

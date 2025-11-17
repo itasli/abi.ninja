@@ -75,6 +75,7 @@ const ContractDetailPage = ({ addressFromUrl, chainIdFromUrl }: ServerSideProps)
     error: fetchError,
     isLoading,
     implementationAddress,
+    deploymentInfo,
   } = useFetchContractAbi({
     contractAddress,
     chainId: parseInt(network),
@@ -158,6 +159,7 @@ const ContractDetailPage = ({ addressFromUrl, chainIdFromUrl }: ServerSideProps)
               key={contractAddress}
               initialContractData={effectiveContractData}
               isVerified={!!fetchedContractData}
+              deploymentInfo={deploymentInfo}
             />
           ) : (
             <div className="bg-base-200 flex flex-col border shadow-xl rounded-2xl px-6 lg:px-8 m-4 overflow-auto">
