@@ -25,7 +25,7 @@ export const useDeployedContractInfo = <TContractName extends ContractName>(cont
           return;
         }
 
-        const code = await publicClient.getBytecode({
+        const code = await publicClient.getCode({
           address: deployedContract.address,
         });
 

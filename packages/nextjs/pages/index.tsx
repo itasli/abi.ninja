@@ -61,7 +61,7 @@ const Home: NextPage = () => {
 
   const handleFetchError = useCallback(async () => {
     try {
-      const bytecode = await publicClient?.getBytecode({
+      const bytecode = await publicClient?.getCode({
         address: verifiedContractAddress as Address,
       });
       const isContract = Boolean(bytecode) && bytecode !== "0x";

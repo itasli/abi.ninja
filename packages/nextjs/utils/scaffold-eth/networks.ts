@@ -48,7 +48,7 @@ export const NETWORKS_EXTRA_DATA: Record<string, ChainAttributes> = {
     color: "#28a0f0",
     icon: "/arbitrum.svg",
   },
-  [chains.zkSync.id]: {
+  [chains.zksync.id]: {
     color: "#5f4bb6",
     icon: "/zksync.svg",
   },
