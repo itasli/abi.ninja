@@ -85,7 +85,7 @@ const ContractDetailPage = ({ addressFromUrl, chainIdFromUrl }: ServerSideProps)
   const { abi: heimdallAbi, isLoading: isHeimdallFetching } = useHeimdall({
     contractAddress: contractAddress as Address,
     rpcUrl: publicClient?.chain.rpcUrls.default.http[0],
-    disabled: network === "31337" || !contractAddress,
+    disabled: network === "31337" || !contractAddress || contractAbi.length > 0 || !!fetchedContractData,
   });
 
   const effectiveContractData =

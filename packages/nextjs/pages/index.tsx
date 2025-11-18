@@ -54,7 +54,7 @@ const Home: NextPage = () => {
   const { abi: heimdallAbi, isLoading: isHeimdallFetching } = useHeimdall({
     contractAddress: localAbiContractAddress as Address,
     rpcUrl: publicClient?.chain.rpcUrls.default.http[0],
-    disabled: network === "31337" || !localAbiContractAddress,
+    disabled: network === "31337" || !localAbiContractAddress || !!contractData,
   });
 
   const isAbiAvailable = contractData?.abi && contractData.abi.length > 0;
